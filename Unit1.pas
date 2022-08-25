@@ -286,11 +286,11 @@ begin
 
       // Gd3 ヘッダ
       SetLength(Gd3Header, 12);
-      Gd3Header[0]:= $47; // G
-      Gd3Header[1]:= $64; // d
-      Gd3Header[2]:= $33; // 3
-      Gd3Header[3]:= $20; // 0
-      Gd3Header[4]:= $00; //
+      Gd3Header[0]:= $47; // "Gd3 "
+      Gd3Header[1]:= $64; //
+      Gd3Header[2]:= $33; //
+      Gd3Header[3]:= $20; //
+      Gd3Header[4]:= $00; // version "0100"
       Gd3Header[5]:= $01; //
       Gd3Header[6]:= $00; //
       Gd3Header[7]:= $00; //
@@ -313,7 +313,8 @@ begin
       end;
       St:=Trim(StringReplace(St,#13,'',[rfReplaceAll]));
 
-      SetLength(Gd3Buffer, St.Length*2 + 2);
+      SetLength(Gd3Buffer, St.Length*2 + 4);
+
       for i := 1 to St.Length do  // Delphi は一文字目は 1
       begin
         c:=St[i];
@@ -331,20 +332,21 @@ begin
 
       end;
 
-      // Note 最後は 0x00 0x00
+      // Note 最後は 0x00 0x00 0x00 0x00
       Gd3Buffer[ St.Length*2+1 ] := 0;
       Gd3Buffer[ St.Length*2+2 ] := 0;
-
+      Gd3Buffer[ St.Length*2+3 ] := 0;
+      Gd3Buffer[ St.Length*2+4 ] := 0;
 
       // Gd3 サイズ
-      gd3Header[11]:= uint32(St.Length*2+2) shr 24;
-      gd3Header[10]:= uint32(St.Length*2+2) shr 16;
-      gd3Header[9]:= uint32(St.Length*2+2) shr 8;
-      gd3Header[8]:= uint32(St.Length*2+2) AND $000000ff;
+      gd3Header[11]:= uint32(St.Length*2+4) shr 24;
+      gd3Header[10]:= uint32(St.Length*2+4) shr 16;
+      gd3Header[9]:= uint32(St.Length*2+4) shr 8;
+      gd3Header[8]:= uint32(St.Length*2+4) AND $000000ff;
 
       NewFS.WriteBuffer(Gd3Header, 12);
 
-      NewFS.WriteBuffer(Gd3Buffer, St.Length*2+2);
+      NewFS.WriteBuffer(Gd3Buffer, St.Length*2+4);
 
     finally
       NewFS.Free;
