@@ -4,7 +4,8 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, ShellAPI, ActnList, System.IOUtils;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, ShellAPI, ActnList, System.IOUtils,
+  System.Actions;
 
 type
   TForm1 = class(TForm)
@@ -69,10 +70,13 @@ type
     Button2: TButton;
     SaveDialog1: TSaveDialog;
     CheckBox1: TCheckBox;
+    ActionList1: TActionList;
+    actSave: TAction;
     procedure Button1Click(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure actSaveExecute(Sender: TObject);
+    procedure actSaveUpdate(Sender: TObject);
 
   private
     { Private êÈåæ }
@@ -245,25 +249,13 @@ begin
   finally
     FS.Free;
     isChanged := false;
-    Button2.Enabled:=false;
+    actSave.Enabled := isChanged;
   end;
 
 
 end;
 
-procedure TForm1.Button1Click(Sender: TObject);
-begin
-
-  if OpenDialog1.Execute then
-  begin
-
-    OpenFileHandler(OpenDialog1.FileName);
-
-  end;
-
-end;
-
-procedure TForm1.Button2Click(Sender: TObject);
+procedure TForm1.actSaveExecute(Sender: TObject);
 var NewFS:      TFileStream;
     Gd3Header:  TBytes;
     Gd3Buffer:  TBytes;
@@ -274,10 +266,8 @@ var NewFS:      TFileStream;
     b: uint16;
 
 begin
-  SaveDialog1.FileName:=OpenDialog1.FileName;
-  if SaveDialog1.Execute then
-  begin
-    NewFS := TFileStream.Create(SaveDialog1.FileName, fmCreate);
+
+    NewFS := TFileStream.Create(OpenDialog1.FileName, fmCreate);
     Gd3BufferSize := 0;
     St:='';
 
@@ -351,16 +341,39 @@ begin
     finally
       NewFS.Free;
     end;
-  end;
+
+    beep;
+    isChanged:=false;
+    actSave.Enabled :=false;
+
 end;
 
+procedure TForm1.actSaveUpdate(Sender: TObject);
+begin
+  if Form1.OpenDialog1.FileName = '' then
+  begin
+    isChanged := false;
+  end;
 
+  actSave.Enabled := isChanged;
+end;
 
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+
+  if OpenDialog1.Execute then
+  begin
+
+    OpenFileHandler(OpenDialog1.FileName);
+
+  end;
+
+end;
 
 procedure TForm1.Edit1Change(Sender: TObject);
 begin
   isChanged:=true;
-  Button2.Enabled := isChanged;
+  actSave.Enabled := isChanged;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);

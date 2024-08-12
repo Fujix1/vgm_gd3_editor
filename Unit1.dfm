@@ -11,9 +11,7 @@ object Form1: TForm1
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
-  OldCreateOrder = False
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
     Left = 16
@@ -279,6 +277,7 @@ object Form1: TForm1
     Top = 21
     Width = 618
     Height = 21
+    ReadOnly = True
     TabOrder = 1
   end
   object edtEofOffset: TEdit
@@ -423,10 +422,8 @@ object Form1: TForm1
     Top = 464
     Width = 165
     Height = 41
-    Caption = #20445#23384#12377#12427'(&S)'
-    Enabled = False
+    Action = actSave
     TabOrder = 20
-    OnClick = Button2Click
   end
   object CheckBox1: TCheckBox
     Left = 24
@@ -446,5 +443,15 @@ object Form1: TForm1
     Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
     Left = 88
     Top = 336
+  end
+  object ActionList1: TActionList
+    Left = 136
+    Top = 216
+    object actSave: TAction
+      Caption = #20445#23384'(&S)'
+      ShortCut = 16467
+      OnExecute = actSaveExecute
+      OnUpdate = actSaveUpdate
+    end
   end
 end
