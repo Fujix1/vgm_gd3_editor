@@ -255,23 +255,25 @@ begin
 
 end;
 
+
 procedure TForm1.actSaveExecute(Sender: TObject);
 var NewFS:      TFileStream;
     Gd3Header:  TBytes;
     Gd3Buffer:  TBytes;
     Gd3BufferSize: Integer;
-    St : String;
-    i: integer;
+    i, bufPos: integer;
     c: WChar;
     b: uint16;
+    tempSize: uint32;
+    newEofOffset: uint32;
+    newFileSize: uint32;
 
 begin
 
     NewFS := TFileStream.Create(OpenDialog1.FileName, fmCreate);
-    Gd3BufferSize := 0;
-    St:='';
 
     try
+      // VGMヘッダーとデータ（GD3タグの直前まで）を書き込む
       NewFS.Write(Buffer, gd3offset);
 
       // Gd3 ヘッダ
@@ -297,46 +299,57 @@ begin
       gd3[9] := Trim(Edit10.Text);
       gd3[10] := Trim(Memo1.Text);
 
+      // 全フィールドの文字数を計算（null終端込み）
+      Gd3BufferSize := 0;
       for i := 0 to 10 do
       begin
-        St := St+gd3[i]+#00;
+        Gd3BufferSize := Gd3BufferSize + (Length(gd3[i]) + 1) * 2;  // +1 は null 終端用
       end;
-      St:=Trim(StringReplace(St,#13,'',[rfReplaceAll]));
 
-      SetLength(Gd3Buffer, St.Length*2 + 4);
+      SetLength(Gd3Buffer, Gd3BufferSize);
 
-      for i := 1 to St.Length do  // Delphi は一文字目は 1
+      // 各フィールドをUTF-16LEでエンコード
+      bufPos := 0;
+      for i := 0 to 10 do
       begin
-        c:=St[i];
-        b:=uint16(c);
-        if c=#10 then   // 改行文字は 0x00 0x0a 固定
+        // 改行コードを削除
+        gd3[i] := StringReplace(gd3[i], #13, '', [rfReplaceAll]);
+
+        // 文字列をバイト配列に書き込み
+        for c in gd3[i] do
         begin
-          Gd3Buffer[(i-1)*2] := b shr 8;
-          Gd3Buffer[(i-1)*2 + 1] := $00ff AND b;
-        end
-        else
-        begin
-          Gd3Buffer[(i-1)*2 + 1] := b shr 8;
-          Gd3Buffer[(i-1)*2] := $00ff AND b;
+          b := uint16(c);
+          Gd3Buffer[bufPos] := $00ff AND b;       // 下位バイト
+          Gd3Buffer[bufPos + 1] := b shr 8;       // 上位バイト
+          bufPos := bufPos + 2;
         end;
 
+        // null 終端を追加（UTF-16LE: 0x00 0x00）
+        Gd3Buffer[bufPos] := $00;
+        Gd3Buffer[bufPos + 1] := $00;
+        bufPos := bufPos + 2;
       end;
 
-      // Note 最後は 0x00 0x00 0x00 0x00
-      Gd3Buffer[ St.Length*2+1 ] := 0;
-      Gd3Buffer[ St.Length*2+2 ] := 0;
-      Gd3Buffer[ St.Length*2+3 ] := 0;
-      Gd3Buffer[ St.Length*2+4 ] := 0;
-
-      // Gd3 サイズ
-      gd3Header[11]:= uint32(St.Length*2+4) shr 24;
-      gd3Header[10]:= uint32(St.Length*2+4) shr 16;
-      gd3Header[9]:= uint32(St.Length*2+4) shr 8;
-      gd3Header[8]:= uint32(St.Length*2+4) AND $000000ff;
+      // Gd3 サイズをリトルエンディアンで書き込み
+      tempSize := uint32(Gd3BufferSize);
+      gd3Header[8]:= tempSize AND $000000ff;
+      gd3Header[9]:= (tempSize shr 8) AND $000000ff;
+      gd3Header[10]:= (tempSize shr 16) AND $000000ff;
+      gd3Header[11]:= (tempSize shr 24) AND $000000ff;
 
       NewFS.WriteBuffer(Gd3Header, 12);
+      NewFS.WriteBuffer(Gd3Buffer, Gd3BufferSize);
 
-      NewFS.WriteBuffer(Gd3Buffer, St.Length*2+4);
+      // *** 重要: VGMヘッダーの EOF offset (0x04) を更新 ***
+      // 新しいファイルサイズを計算
+      newFileSize := gd3offset + 12 + Gd3BufferSize;
+      // EOF offset は (ファイルサイズ - 0x04)
+      newEofOffset := newFileSize - $04;
+
+      // ファイルの先頭にシーク
+      NewFS.Position := $04;
+      // EOF offset をリトルエンディアンで書き込み
+      NewFS.Write(newEofOffset, 4);
 
     finally
       NewFS.Free;
